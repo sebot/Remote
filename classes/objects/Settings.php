@@ -45,7 +45,78 @@ class Settings extends RemoteObjects implements RemoteObject
          */
 		$remoteSettings = new FieldsBuilder('remote_settings');
         $remoteSettings
-			->addText('remote_api_key')
+            ->addTrueFalse('use_nice_dashboard', [
+                'label' => 'use remote UI?',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => 0,
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'message' => '',
+                'default_value' => 1,
+                'ui' => 1,
+                'ui_on_text' => 'Yes',
+                'ui_off_text' => 'No',
+            ])
+            ->addTrueFalse('admin_bar_enabled', [
+                'label' => 'Show admin bar?',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => 0,
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'message' => '',
+                'default_value' => 0,
+                'ui' => 1,
+                'ui_on_text' => 'Yes',
+                'ui_off_text' => 'No',
+            ])
+            ->addTrueFalse('admin_menu_enabled', [
+                'label' => 'Show admin menu?',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => 0,
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'message' => '',
+                'default_value' => 0,
+                'ui' => 1,
+                'ui_on_text' => 'Yes',
+                'ui_off_text' => 'No',
+            ])
+            ->addColorPicker('admin_background_color', [
+                'label' => 'Dashboard background color',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => 0,
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'default_value' => '',
+            ])
+            ->addColorPicker('admin_text_color', [
+                'label' => 'Dashboard text color',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => 0,
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'default_value' => '',
+            ])
 			->setLocation('options_page', '==', 'remote-set');
 
         acf_add_local_field_group($remoteSettings->build());

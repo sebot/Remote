@@ -28,7 +28,9 @@ class Remote
     public static $pluginAssetPath = null;
     public static $pluginClasses   = [];
 
-    public static $pluginRef = 0x0000;
+    public static $pluginRef     = 0x0000;
+    public static $pluginAssets  = 0x0001;
+    public static $pluginBackend = 0x0002;
 
     /**
      * Initialize plugin with root path and uri provided
@@ -50,11 +52,20 @@ class Remote
 
         // add hooks
         add_action('plugins_loaded', [$this, 'loadCore']);
-        
-        new core\RemoteObjects([
-            'remote\objects\Settings',
-            'remote\objects\Site'
-        ]);
+       
+        // load objects, inject dependencies
+        if (! isset(self::$pluginClasses[self::$pluginRef])) {
+            self::$pluginClasses[self::$pluginAssets] = new core\RemoteAssets;
+
+            new core\RemoteObjects([
+                'remote\objects\Settings',
+                'remote\objects\Site'
+            ]);
+
+            self::$pluginClasses[self::$pluginBackend] = new core\RemoteBackend(
+                self::$pluginClasses[self::$pluginAssets]
+            );
+        }
 	}
 
     /**

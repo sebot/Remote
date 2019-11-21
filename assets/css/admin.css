@@ -1,0 +1,45 @@
+.edit-post-header {
+    left: 0 !important;
+    top: 0 !important;
+}
+
+.edit-post-layout__content {
+    margin-left: 0px !important;
+}
+
+.edit-post-sidebar {
+    top: 55px;
+}
+
+.wp-block {
+    max-width: 100% !important;
+}
+
+.button-primary {
+    transition: 0.6s;
+}
+
+#wpfooter {
+    margin-left: 0px;
+}
+
+#remote-modal {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+}
+
+#remote-modal .modal-content {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+#remote-m-close {
+    position: fixed;
+    top: 15px;
+    right: 60px;
+}

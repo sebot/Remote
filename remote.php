@@ -30,7 +30,8 @@ if (file_exists(dirname(__FILE__) . '/vendor/autoload.php')) {
     include_once dirname(__FILE__) . '/vendor/autoload.php';
 }
 
-if (class_exists('remote\\Remote')) {
+// backend only plugin
+if (is_admin() && class_exists('remote\\Remote')) {
     define('REMOTE_VERSION', '1.0');
 
     // ensure path is only set once
