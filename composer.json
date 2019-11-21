@@ -1,0 +1,22 @@
+{
+    "name": "sebo/remote",
+    "description": "a Plugin to handle all sites using Fetcher Theme remotely.",
+    "type": "project",
+    "license": "GPLv2+",
+    "authors": [
+        {
+            "name": "Sebo",
+            "email": "sebo@42geeks.gg"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "johnbillion/extended-cpts": "^4.3",
+        "stoutlogic/acf-builder": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "remote\\": "./classes"
+        }
+    }
+}
