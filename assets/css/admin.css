@@ -43,3 +43,15 @@
     top: 15px;
     right: 60px;
 }
+
+.error {
+    color: red !important;
+}
+
+.success {
+    color: green !important;
+}
+
+.bold {
+    font-weight: bold;
+}

@@ -66,12 +66,6 @@ class RemoteAssets extends RemoteObjects implements RemoteAsset
             'postUrl' => $permalink === false ? '/' : $permalink,
             'siteUrl' => get_site_url()
         ];
-        
-        if (true !== $adminMenuEnabled && true === $uiEnabled) {
-            $data['logo'] = get_field('logo', 'option')['url'];
-            $data['adminTextColor'] = get_field('admin_text_color', 'option');
-            $data['adminBgColor'] = get_field('admin_background_color', 'option');
-        }
 
         if (true !== $adminBarEnabled) {
             wp_enqueue_style(
@@ -92,6 +86,9 @@ class RemoteAssets extends RemoteObjects implements RemoteAsset
 		}
 		
 		if (true === $uiEnabled) {
+            $data['adminTextColor'] = get_field('admin_text_color', 'option');
+            $data['adminBgColor'] = get_field('admin_background_color', 'option');
+            
             // use remote menu for backend instead
             wp_enqueue_style(
                 'remote-menu',

@@ -47,15 +47,7 @@ class Settings extends RemoteObjects implements RemoteObject
         $remoteSettings
             ->addTrueFalse('use_nice_dashboard', [
                 'label' => 'use remote UI?',
-                'instructions' => '',
-                'required' => 0,
-                'conditional_logic' => 0,
-                'wrapper' => [
-                    'width' => '',
-                    'class' => '',
-                    'id' => '',
-                ],
-                'message' => '',
+                'instructions' => 'enables remote Backend UI',
                 'default_value' => 1,
                 'ui' => 1,
                 'ui_on_text' => 'Yes',
@@ -63,15 +55,7 @@ class Settings extends RemoteObjects implements RemoteObject
             ])
             ->addTrueFalse('admin_bar_enabled', [
                 'label' => 'Show admin bar?',
-                'instructions' => '',
-                'required' => 0,
-                'conditional_logic' => 0,
-                'wrapper' => [
-                    'width' => '',
-                    'class' => '',
-                    'id' => '',
-                ],
-                'message' => '',
+                'instructions' => 'Show top admin bar',
                 'default_value' => 0,
                 'ui' => 1,
                 'ui_on_text' => 'Yes',
@@ -79,15 +63,7 @@ class Settings extends RemoteObjects implements RemoteObject
             ])
             ->addTrueFalse('admin_menu_enabled', [
                 'label' => 'Show admin menu?',
-                'instructions' => '',
-                'required' => 0,
-                'conditional_logic' => 0,
-                'wrapper' => [
-                    'width' => '',
-                    'class' => '',
-                    'id' => '',
-                ],
-                'message' => '',
+                'instructions' => 'Show admin menu (left side)',
                 'default_value' => 0,
                 'ui' => 1,
                 'ui_on_text' => 'Yes',
@@ -95,27 +71,13 @@ class Settings extends RemoteObjects implements RemoteObject
             ])
             ->addColorPicker('admin_background_color', [
                 'label' => 'Dashboard background color',
-                'instructions' => '',
-                'required' => 0,
-                'conditional_logic' => 0,
-                'wrapper' => [
-                    'width' => '',
-                    'class' => '',
-                    'id' => '',
-                ],
-                'default_value' => '',
+                'instructions' => 'body color for the dashboard',
+                'default_value' => '#fff',
             ])
             ->addColorPicker('admin_text_color', [
                 'label' => 'Dashboard text color',
-                'instructions' => '',
-                'required' => 0,
-                'conditional_logic' => 0,
-                'wrapper' => [
-                    'width' => '',
-                    'class' => '',
-                    'id' => '',
-                ],
-                'default_value' => '',
+                'instructions' => 'text color for the dashboard',
+                'default_value' => '#000',
             ])
 			->setLocation('options_page', '==', 'remote-set');
 

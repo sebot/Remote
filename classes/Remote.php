@@ -66,7 +66,19 @@ class Remote
                 self::$pluginClasses[self::$pluginAssets]
             );
         }
-	}
+        
+		add_action('acf/include_field_types', [$this, 'registerCustomFields']);
+    }
+    
+    /**
+     * Register any acf custom fields loaded here
+     * 
+     * @return void
+     */
+    public function registerCustomFields(): void
+    {
+		new core\RemoteMessageField();
+    }
 
     /**
      * Init the cpt once and flush rewrites
