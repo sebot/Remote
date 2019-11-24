@@ -32,6 +32,7 @@ class Site extends RemoteObjects implements RemoteObject
      */
     public function __construct()
     {
+        add_action('save_post_site', [$this, 'saveSite'], 99, 1);
     }
 
     /**
@@ -63,9 +64,13 @@ class Site extends RemoteObjects implements RemoteObject
          */
 		$SiteInfo = new FieldsBuilder('site_info');
         $SiteInfo
-            ->addText('site_url', ['required' => true])
+            ->addText('site_url', 
+                [
+                    'required' => true,
+                ]
+            )
             ->addText('site_server_ip')
-            ->addText('remote_secret', 
+            ->addText('remote_secret',
                 [
                     'required' => true,
                     'instructions' => 'enter the Secret visible in your sites "Remote" tab.'
@@ -132,8 +137,64 @@ class Site extends RemoteObjects implements RemoteObject
 
         acf_add_local_field_group($SiteSettings->build());
 
-        // need to use load_field here as load_value does not work for message fields
+        // load site connection status
         add_filter('acf/load_value/name=site_connection', [$this, 'getConnectionStatus'], 10, 3);
+
+        // set some fields to readonly
+        add_filter('acf/load_field/name=site_url', [$this, 'setReadonly'], 10, 1);
+        add_filter('acf/load_field/name=remote_secret', [$this, 'setReadonly'], 10, 1);
+        add_filter('acf/load_field/name=site_server_ip', [$this, 'setReadonly'], 10, 1);
+    }
+
+    /**
+     * Set an acf field readonly on load
+     */
+    public function setReadonly($field): array
+    {
+        $post_id = get_the_ID();
+        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
+        if (false !== $isConnected) {
+            $field['readonly'] = 1;
+        }
+
+        return $field;
+    }
+
+    /**
+     * WordPress hook save_post_site
+     * check if the site is connected and if it's not
+     * setup the connection by calling the fetcher 
+     * connect endpoint on the provided url
+     * 
+     * example https://yourdomain.com/wp-json/fetcher/v2/remote/connect/
+     * in the request which needs to be aes-128-ctr encrypted AFTER
+     * authenticated hmac check is done.
+     */
+    public function saveSite(int $post_id): void
+    {
+        if (wp_is_post_revision($post_id) || wp_doing_cron()) {
+            return;
+        }
+        
+        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
+        if (true === $isConnected) {
+            return;
+        } else {
+            $url = get_field('site_url');
+            $secret = get_field('remote_secret');
+            $this->api($url)->connect($secret, $post_id);
+        }
+
+        /* TODO
+            1. send ping request to remote site to check if it's there
+            2. generate crypted string containing a security token using openssl
+            3. generate hmac and sign the token
+            4. send token over the wire to remote sites /handshake endpoint as POST
+            5. on site extract token and tmp store to the database, this token beeing
+            there will open up a specific endpoint encrypted in the message
+            after a single request the token is wiped which will remove the api endpoints
+            until the next handshake happens
+        */
     }
 
     /**
@@ -148,8 +209,7 @@ class Site extends RemoteObjects implements RemoteObject
      */
     public function getConnectionStatus($value, $post_id, $field)
     {
-        $isConnected = get_post_meta($post_id, 'isConnected', true);
-        $isConnected = false != $isConnected;
+        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
         
         $value = __('This site is currently <span class="error bold">not connected</span> to this Remote network.', 'remote');
         if (true === $isConnected) {

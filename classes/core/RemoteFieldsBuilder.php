@@ -17,7 +17,7 @@ use StoutLogic\AcfBuilder\FieldsBuilder;
  * addCustom function to load any custom fields using acf builder
  * classes
  * 
- * @category Theme
+ * @category Multisite
  * @package  Remote
  * @author   Sebo <sebo@42geeks.gg>
  * @license  GPLv2 https://opensource.org/licenses/gpl-2.0.php

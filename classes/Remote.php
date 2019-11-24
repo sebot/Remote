@@ -31,6 +31,7 @@ class Remote
     public static $pluginRef     = 0x0000;
     public static $pluginAssets  = 0x0001;
     public static $pluginBackend = 0x0002;
+    public static $pluginApi     = 0x0003;
 
     /**
      * Initialize plugin with root path and uri provided
@@ -56,6 +57,7 @@ class Remote
         // load objects, inject dependencies
         if (! isset(self::$pluginClasses[self::$pluginRef])) {
             self::$pluginClasses[self::$pluginAssets] = new core\RemoteAssets;
+            self::$pluginClasses[self::$pluginApi] = new core\RemoteApi;
 
             new core\RemoteObjects([
                 'remote\objects\Settings',
@@ -67,7 +69,7 @@ class Remote
             );
         }
         
-		add_action('acf/include_field_types', [$this, 'registerCustomFields']);
+        add_action('acf/include_field_types', [$this, 'registerCustomFields']);
     }
     
     /**
@@ -109,6 +111,19 @@ class Remote
     {
         self::$pluginClasses[self::$pluginRef] = $this;
     }
+    
+    /**
+     * Reference to the api object
+     * 
+     * @param string $baseUrl - the base url to initialize the api with
+     * 
+     * @return mixed - return reference to plugin api
+     */
+    protected function api(string $baseUrl)
+    {
+        self::$pluginClasses[self::$pluginApi]->setUrl($baseUrl);
+        return self::$pluginClasses[self::$pluginApi];
+	}
 
     /**
      * Reference to the app object

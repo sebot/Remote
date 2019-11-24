@@ -13,6 +13,7 @@ namespace remote\core;
 
 use StoutLogic\AcfBuilder\FieldsBuilder;
 use remote\interfaces\RemoteObject;
+use remote\Remote;
 
 /**
  * Class RemoteObjects - Remote master object
@@ -23,7 +24,7 @@ use remote\interfaces\RemoteObject;
  * @license  GPLv2 https://opensource.org/licenses/gpl-2.0.php
  * @link     https://42geeks.gg/
  */
-class RemoteObjects
+class RemoteObjects extends Remote
 {
     /**
      * Load all required objects if they
