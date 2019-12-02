@@ -61,7 +61,8 @@ class Remote
 
             new core\RemoteObjects([
                 'remote\objects\Settings',
-                'remote\objects\Site'
+                'remote\objects\Site',
+                'remote\objects\RemotePost'
             ]);
 
             self::$pluginClasses[self::$pluginBackend] = new core\RemoteBackend(

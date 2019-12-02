@@ -10,9 +10,8 @@
  */
 namespace remote\core;
 
-use ParagonIE\Halite\KeyFactory;
-use ParagonIE\HiddenString\HiddenString;
-use ParagonIE\Halite\Symmetric\Crypto as Symmetric;
+// octopus & hexagon
+use remote\core\crypto\Octopus;
 
 /**
  * Class RemoteApi - launch requests to remote site accessing
@@ -24,7 +23,7 @@ use ParagonIE\Halite\Symmetric\Crypto as Symmetric;
  * @license  GPLv2 https://opensource.org/licenses/gpl-2.0.php
  * @link     https://42geeks.gg/
  */
-class RemoteApi
+class RemoteApi extends Octopus
 {
 	const REMOTE_END = 'wp-json/fetcher/v2/remote/';
 
@@ -51,7 +50,22 @@ class RemoteApi
 	public function setUrl(string $url): void
 	{
 		$this->baseUrl = $url;
-	}
+    }
+    
+    /**
+     * Sends a page to the remote site with all
+     * required meta (including images) attached
+     * images will be sent as base64
+     * 
+     * @param string $secret - the secret for the site
+     * @param int $post_id - the local post id
+     * 
+     * @return int - the remote post
+     */
+    public function sendPostToRemote(string $secret, int $post_id): int
+    {
+        var_dump($post_id);die;
+    }
 
 	/**
      * Connect a Fetcher Site to this remote Network
@@ -69,71 +83,120 @@ class RemoteApi
 	 * @param string $secret - the secret provided (needs to match the secret on the fetcher site)
 	 * @param int $site_id - the site_id to connect to
 	 * 
+     * @return bool - wether the connect succeeded or not
      */
-    public function connect(string $secret, int $site_id)
+    public function connect(string $secret, int $site_id): bool
     {
-		[$mac, $keyForNextRequest, $msg] = $this->_generateHandshakePackage($secret, 'connect');
-		$this->_handshake($mac, $msg);
-		$result = $this->_sendConnectRequest($keyForNextRequest);
-		// site has been connected
-		if (false === $result->error) {
-			update_post_meta($site_id, 'isConnected', true);
-			return true;
-		}
-	}
+        // handshake -> TODO: abstract
+        $octopus = new Octopus($secret, true);
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('connect');
+        $res = $this->_handshake($mac, $msg, $saltVector);
+        if (false === $res->error) {
+            $showHeader        = get_field('show_header', $site_id);
+            $showNavigation    = get_field('show_navigation', $site_id);
+            $showSlider        = get_field('show_slider', $site_id);
+            $showFeaturedImage = get_field('show_featured_image', $site_id);
 
-	/**
-	 * Generate hkdf authenticated encrypted message
-	 * based on provided secret and the request which will be included
-	 * in the "opening" request
-	 * 
-	 * @param string $secret - the secret
-	 * @param string $request - the request that will be called
-	 * 
-	 * @return array - the signed encrypted message and the opener for the next request to use
-	 * remote
-	 */
-	private function _generateHandshakePackage(string $secret, string $request): array
-	{
-		// generate opener which will be sent to remote site
-		$p1 = new HiddenString(str_rot13($secret)); // pepper
-		$s1 = random_bytes(16); // salt
-		$opener = KeyFactory::deriveEncryptionKey($p1, $s1); // soup
+            // request data
+            $rqData = [
+                'request' => self::rhashRoute('connect'),
+                'requestData' => [
+                    $showHeader,
+                    $showNavigation,
+                    $showSlider,
+                    $showFeaturedImage
+                ]
+            ];
+            $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
+            $mac2 = $octopus->sign2ndRequest($ciphertext);
+            $remoteResponse = $this->_sendConnectRequest($mac2, $ciphertext);
+            return !$remoteResponse->error;
+        }
 
-		// generate key for handshake, this time use reversed secret ;)
-		$p2 = new HiddenString(strrev($secret)); // pepper
-		$s2 = '\x63\x96\xa9\x00'; // salt
-		$packageLock = KeyFactory::deriveEncryptionKey($p2, $s2); // soup
+        return null === $res->error ? false : $res->error;
+    }
 
-		// encrypt - TODO: include shiffre in message like strrev or str_rot13
-		// and rotate them for every request cycle
-		$message = new HiddenString($request.'::'.bin2hex($s1));
-		$ciphertext = Symmetric::encrypt($message, $packageLock);
+    /**
+     * Update a sites settings
+     * 
+     * @param string $secret - the site secret
+     * @param int $site_id - the site local id
+     */
+    public function update(string $secret, int $site_id): void
+    {
+        // handshake -> TODO: abstract
+        $octopus = new Octopus($secret, true);
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('update');
+        $res = $this->_handshake($mac, $msg, $saltVector);
+        if (false === $res->error) {
+            $showHeader        = get_field('show_header', $site_id);
+            $showNavigation    = get_field('show_navigation', $site_id);
+            $showSlider        = get_field('show_slider', $site_id);
+            $showFeaturedImage = get_field('show_featured_image', $site_id);
 
-		// auth
-		$p3 = new HiddenString(str_rot13(strrev($secret)));
-		$s3 = '\x36\x69\x9a\xff';
+            // request data
+            $rqData = [
+                'request' => self::rhashRoute('update'),
+                'requestData' => [
+                    $showHeader,
+                    $showNavigation,
+                    $showSlider,
+                    $showFeaturedImage
+                ]
+            ];
+            $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
+            $mac2 = $octopus->sign2ndRequest($ciphertext);
+            $this->_sendUpdateRequest($mac2, $ciphertext);
+        }
+    }
 
-		return [
-			Symmetric::authenticate(
-				$ciphertext, 
-				KeyFactory::deriveAuthenticationKey($p3, $s3)
-			),
-			$opener,
-			$ciphertext
+    private function _sendUpdateRequest(string $mac, string $ciphertext)
+    {
+        $data = [
+			'mac' => $mac,
+			'msg' => $ciphertext
 		];
-	}
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'update');
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-	private function _sendConnectRequest($key)
+        $resp = curl_exec($ch);
+		curl_close ($ch);
+
+		return json_decode($resp);
+    }
+
+    /**
+     * Reverse string then hash it
+     * TODO: move this to Octopus
+     * 
+     * @param string $str - the string
+     * 
+     * @return string - the hash
+     */
+    private static function rhashRoute(string $str): string
+    {
+        return md5(strrev($str));
+    }
+
+    /**
+     * Send a connect request to FetcherRemoteApi
+     * this request has been initialized with a proper handshake
+     * 
+     * @param string $mac - the mac used to sign the message
+     * @param string $ciphertext - the cyphertext encrypted by nx params
+     * which are by now stored on the client
+     * 
+     * @return object - the response
+     */
+	private function _sendConnectRequest(string $mac, string $ciphertext): object
 	{
-		// TODO: authenticate as well -> abstract this to not call the same code all over again
-		$message = new HiddenString('remote_site_connect');
-		$ciphertext = Symmetric::encrypt($message, $key);
-
 		// TODO: include initial config for site to connect it
 		$data = [
-			// 'remoteMac' => $mac,
-			'remoteMsg' => $ciphertext
+			'mac' => $mac,
+			'msg' => $ciphertext
 		];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'connect');
@@ -141,21 +204,21 @@ class RemoteApi
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-		$resp = curl_exec($ch);
-		
+        $resp = curl_exec($ch);
 		curl_close ($ch);
 
 		return json_decode($resp);
 	}
 	
 	/**
-     *
+     * Run the initial Handshake call
      */
-    private function _handshake($mac, $msg)
+    private function _handshake(string $mac, string $msg, string $saltVector)
     {
 		$data = [
-			'remoteMac' => $mac,
-			'remoteMsg' => $msg
+			'm' => $mac,
+            'ms' => $msg,
+            'sv' => $saltVector
 		];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'handshake');
@@ -163,8 +226,10 @@ class RemoteApi
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-		$resp = curl_exec($ch);
+        $resp = curl_exec($ch);
 
-		curl_close ($ch);
+        curl_close ($ch);
+        
+        return json_decode($resp);
     }
 }

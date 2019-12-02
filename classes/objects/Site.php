@@ -32,7 +32,7 @@ class Site extends RemoteObjects implements RemoteObject
      */
     public function __construct()
     {
-        add_action('save_post_site', [$this, 'saveSite'], 99, 1);
+        add_action('acf/save_post_site', [$this, 'saveSite'], 15, 1);
     }
 
     /**
@@ -107,14 +107,14 @@ class Site extends RemoteObjects implements RemoteObject
         $SiteSettings
             ->addTrueFalse('show_header', [
                 'label' => 'Show header?',
-                'default_value' => 0,
+                'default_value' => 1,
                 'ui' => 1,
                 'ui_on_text' => 'Yes',
                 'ui_off_text' => 'No',
             ])
             ->addTrueFalse('show_navigation', [
                 'label' => 'Show Navigation?',
-                'default_value' => 0,
+                'default_value' => 1,
                 'ui' => 1,
                 'ui_on_text' => 'Yes',
                 'ui_off_text' => 'No',
@@ -126,11 +126,13 @@ class Site extends RemoteObjects implements RemoteObject
                 'ui_on_text' => 'Yes',
                 'ui_off_text' => 'No',
             ])
-            ->addSelect('number_columns')
-                ->addChoice(1)
-                ->addChoice(2)
-                ->addChoice(3)
-                ->addChoice(4)
+            ->addTrueFalse('show_featured_image', [
+                'label' => 'Show featured image?',
+                'default_value' => 1,
+                'ui' => 1,
+                'ui_on_text' => 'Yes',
+                'ui_off_text' => 'No',
+            ])
 
             ->setGroupConfig('position', 'side')
 			->setLocation('post_type', '==', 'site');
@@ -170,31 +172,28 @@ class Site extends RemoteObjects implements RemoteObject
      * in the request which needs to be aes-128-ctr encrypted AFTER
      * authenticated hmac check is done.
      */
-    public function saveSite(int $post_id): void
+    public function saveSite($post_id): void
     {
-        if (wp_is_post_revision($post_id) || wp_doing_cron()) {
+        if (wp_is_post_revision($post_id) || 
+            wp_doing_cron()) {
             return;
         }
         
-        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
-        if (true === $isConnected) {
-            return;
-        } else {
-            $url = get_field('site_url');
-            $secret = get_field('remote_secret');
-            $this->api($url)->connect($secret, $post_id);
-        }
+        // get data
+        $url = get_field('site_url');
+        $secret = get_field('remote_secret');
 
-        /* TODO
-            1. send ping request to remote site to check if it's there
-            2. generate crypted string containing a security token using openssl
-            3. generate hmac and sign the token
-            4. send token over the wire to remote sites /handshake endpoint as POST
-            5. on site extract token and tmp store to the database, this token beeing
-            there will open up a specific endpoint encrypted in the message
-            after a single request the token is wiped which will remove the api endpoints
-            until the next handshake happens
-        */
+        // check if site is already connected
+        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
+        if (true == $isConnected) {
+            // update site settings
+            $this->api($url)->update($secret, $post_id);
+        } else {
+            // connect site
+            $isConnected = $this->api($url)->connect($secret, $post_id);
+            if (!is_bool($isConnected)) $isConnected = boolval($isConnected);
+            update_post_meta($post_id, 'isConnected', $isConnected);
+        }
     }
 
     /**
@@ -210,8 +209,13 @@ class Site extends RemoteObjects implements RemoteObject
     public function getConnectionStatus($value, $post_id, $field)
     {
         $isConnected = false != get_post_meta($post_id, 'isConnected', true);
-        
-        $value = __('This site is currently <span class="error bold">not connected</span> to this Remote network.', 'remote');
+        $value = __(
+            '<p>This site is currently <span class="error bold">not connected</span>' . 
+            'to this Remote network. </p><p><span class="bold">WARNING:</span> by connecting' .
+            'this Site any settings done on the remote Site will be overwritten!</p>'
+            , 
+            'remote'
+        );
         if (true === $isConnected) {
             $value = __('This site is currently <span class="success bold">connected</span> to this Remote network.', 'remote');
         }
