@@ -27,12 +27,14 @@ use remote\core\RemoteObjects;
  */
 class Site extends RemoteObjects implements RemoteObject
 {
+    const CPT_NAME = 'site';
+
     /**
      * New Site Object
      */
     public function __construct()
     {
-        add_action('acf/save_post_site', [$this, 'saveSite'], 15, 1);
+        add_action('acf/save_post', [$this, 'saveSite'], 15, 1);
     }
 
     /**
@@ -42,8 +44,8 @@ class Site extends RemoteObjects implements RemoteObject
      */
     public function loadObject(): void
     {
-		register_extended_post_type('site', [
-            'supports'           => ['title', 'author'],
+		register_extended_post_type(self::CPT_NAME, [
+            'supports'           => ['title'],
             'with_front'         => false,
             'public'             => false,
             'publicly_queryable' => false,
@@ -81,7 +83,7 @@ class Site extends RemoteObjects implements RemoteObject
                 'field_type' => 'select'
             ])
             ->setGroupConfig('position', 'acf_after_title')
-			->setLocation('post_type', '==', 'site');
+			->setLocation('post_type', '==', self::CPT_NAME);
 
         acf_add_local_field_group($SiteInfo->build());
 
@@ -99,7 +101,7 @@ class Site extends RemoteObjects implements RemoteObject
             ]
         )
         ->setGroupConfig('position', 'side')
-        ->setLocation('post_type', '==', 'site');
+        ->setLocation('post_type', '==', self::CPT_NAME);
 
         acf_add_local_field_group($SiteStatus->build());
 
@@ -135,7 +137,7 @@ class Site extends RemoteObjects implements RemoteObject
             ])
 
             ->setGroupConfig('position', 'side')
-			->setLocation('post_type', '==', 'site');
+			->setLocation('post_type', '==', self::CPT_NAME);
 
         acf_add_local_field_group($SiteSettings->build());
 
@@ -175,7 +177,7 @@ class Site extends RemoteObjects implements RemoteObject
     public function saveSite($post_id): void
     {
         if (wp_is_post_revision($post_id) || 
-            wp_doing_cron()) {
+            wp_doing_cron() || self::CPT_NAME !== get_post_type($post_id)) {
             return;
         }
         

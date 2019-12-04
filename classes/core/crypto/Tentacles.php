@@ -82,7 +82,7 @@ final class Tentacles extends Octopus
     {
         $parts = str_split($secret);
         $salt = '';
-        $vector;
+        $vector = '';
         for ($i = 0; $i < 4; $i++) {
             $v = random_int(0, count($parts)-1);
             $y = random_int(0, count($parts)-1);

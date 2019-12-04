@@ -58,13 +58,80 @@ class RemoteApi extends Octopus
      * images will be sent as base64
      * 
      * @param string $secret - the secret for the site
-     * @param int $post_id - the local post id
+     * @param int $postId - the local post id
+	 * @param int $siteId - the id of the site
      * 
      * @return int - the remote post
      */
-    public function sendPostToRemote(string $secret, int $post_id): int
+    public function sendPostToRemote(string $secret, int $postId, int $siteId): int
     {
-        var_dump($post_id);die;
+        // TODO: abstract this part to separate function/class
+        // move handshake to octopus
+        // add new function sendMessage to Octopus
+        $octopus = new Octopus($secret, true);
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('updatepost');
+        $res = $this->_handshake($mac, $msg, $saltVector);
+        if (false === $res->error) {
+            // get post data
+            $post = get_post($postId);
+            $title = $post->post_title;
+            $content = $post->post_content;
+            $isHome = get_field('is_home', $postId);
+            $postType = $post->post_type;
+
+            // get featured image
+			$featuredImageUrl = get_the_post_thumbnail_url($postId);
+            $featuredFile = file_get_contents($featuredImageUrl);
+            $featuredImage = base64_encode($featuredFile);
+
+            // get attachments in content
+            // TODO replace all images with a unique hash matching the image string
+            // from file_get_contents md5
+            $attachments = null;
+            preg_match_all('/<img.+src=[\'"]([^\'"]+)[\'"].*>/i', $content, $attachments);
+        
+            $inContentImages = [];
+            if (isset($attachments[1]) && is_array($attachments[1])) {
+                foreach ($attachments[1] as $attachmentUrl) {
+                    // get file contents
+                    $file = file_get_contents($attachmentUrl);
+                    $b64 = base64_encode($file);
+
+                    // update content with md5 of b64
+                    $md5 = md5($b64);
+                    $content = str_replace($attachmentUrl, $md5, $content);
+
+                    $inContentImages[$md5] = $b64;
+                }
+			}
+			
+			$uniqueId = get_post_meta($siteId, 'uniqueId_'.$postId, true);
+			if ('' == $uniqueId) {
+				$uniqueId = md5($siteId.$postId.time());
+				update_post_meta($siteId, 'uniqueId_'.$postId, $uniqueId);
+			}
+
+            // request data
+            $rqData = [
+                'request' => self::rhashRoute('updatepost'),
+                'requestData' => [
+                    'title'			  => $title,
+                    'content'         => $content,
+                    'isHome'          => $isHome,
+                    'postType'        => $postType,
+                    'featuredImage'   => $featuredImage,
+					'inContentImages' => $inContentImages,
+					'uniqueId'		  => $uniqueId
+                ]
+            ];
+            $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
+            $mac2 = $octopus->sign2ndRequest($ciphertext);
+            $remoteResponse = $this->_sendUpdatePostRequest($mac2, $ciphertext);
+            var_dump($remoteResponse);
+            return !$remoteResponse->error;
+        }
+
+        return null === $res->error ? false : $res->error;
     }
 
 	/**
@@ -180,6 +247,35 @@ class RemoteApi extends Octopus
     {
         return md5(strrev($str));
     }
+
+    /**
+     * Send a post to a remote site
+     * 
+     * @param string $mac - the mac used to sign the message
+     * @param string $ciphertext - the cyphertext encrypted by nx params
+     * which are by now stored on the client
+     * 
+     * @return object - the response
+     */
+	private function _sendUpdatePostRequest(string $mac, string $ciphertext): object
+	{
+		// TODO: include initial config for site to connect it
+		$data = [
+			'mac' => $mac,
+			'msg' => $ciphertext
+		];
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'updatepost');
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $resp = curl_exec($ch);
+        var_dump($resp);die;
+		curl_close ($ch);
+
+		return json_decode($resp);
+	}
 
     /**
      * Send a connect request to FetcherRemoteApi

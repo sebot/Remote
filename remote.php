@@ -31,7 +31,7 @@ if (file_exists(dirname(__FILE__) . '/vendor/autoload.php')) {
 }
 
 // backend only plugin
-if (is_admin() && class_exists('remote\\Remote')) {
+if (class_exists('remote\\Remote')) {
     define('REMOTE_VERSION', '1.0');
 
     // ensure path is only set once

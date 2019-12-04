@@ -17,7 +17,7 @@ use remote\interfaces\RemoteObject;
 use remote\core\RemoteObjects;
 
 /**
- * Class RemotePost - factory objects for Remote posts
+ * Class Page - factory objects for Remote posts
  * 
  * @category Multisite
  * @package  Remote
@@ -25,14 +25,16 @@ use remote\core\RemoteObjects;
  * @license  GPLv2 https://opensource.org/licenses/gpl-2.0.php
  * @link     https://42geeks.gg/
  */
-class RemotePost extends RemoteObjects implements RemoteObject
+class Page extends RemoteObjects implements RemoteObject
 {
+    const CPT_NAME = 'page';
+
     /**
      * New Page Object
      */
     public function __construct()
     {
-        add_action('acf/save_post_remotepost', [$this, 'sendPageToRemote'], 15, 1);
+        add_action('acf/save_post', [$this, 'sendPageToRemote'], 15, 1);
     }
 
     /**
@@ -42,8 +44,8 @@ class RemotePost extends RemoteObjects implements RemoteObject
      */
     public function loadObject(): void
     {
-        register_extended_post_type('remotepost', [
-            'supports'           => ['title', 'author', 'editor'],
+        register_extended_post_type(self::CPT_NAME, [
+            'supports'           => ['title', 'editor', 'thumbnail'],
             'public'             => true,
             'show_in_rest'       => true
         ]);
@@ -88,35 +90,39 @@ class RemotePost extends RemoteObjects implements RemoteObject
         ])
 
         ->setGroupConfig('position', 'side')
-        ->setLocation('post_type', '==', 'remotepost');
+        ->setLocation('post_type', '==', self::CPT_NAME);
 
         acf_add_local_field_group($PageSettings->build());
     }
 
     /**
-     * Send a page to remote site
+     * Send a post object to remote site which will
+     * return the remote id. Images will be transfered
+     * using base64 encoding - the Post will be updated
+     * if it already exists
+     * 
+     * @param int $post_id - the id of the object
+     * 
+     * @return void
      */
     public function sendPageToRemote($post_id): void
     {
-        var_dump($post_id);die;
         // TODO: abstract
         if (wp_is_post_revision($post_id) || 
-            wp_doing_cron()) {
+            wp_doing_cron() || self::CPT_NAME !== get_post_type($post_id)) {
             return;
         }
 
-        // ensure site is connected
-        $isConnected = false != get_post_meta($post_id, 'isConnected', true);
-        if (true == $isConnected) {
-            // get data
-            $targetSites = get_field('target_sites', $post_id);
-            $url = get_field('site_url');
-            $secret = get_field('remote_secret');
+        // get target sites
+        $targetSites = get_field('target_sites', $post_id);
+        if (false !== $targetSites) {
+            foreach ($targetSites as $targetSite) {
+                $siteId = $targetSite->ID;
+                $url = get_field('site_url', $siteId);
+                $secret = get_field('remote_secret', $siteId);
 
-            // TODO: get meta 'target_sites' for page and get secret as well as url foreach
-            // then update each site one by one
-            // send page to site
-            $remoteId = $this->api($url)->sendPostToRemote($secret, $post_id);
+                $remoteId = $this->api($url)->sendPostToRemote($secret, $post_id, $siteId);
+            }
         }
     }
 }
