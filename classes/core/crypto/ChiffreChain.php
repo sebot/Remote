@@ -160,7 +160,7 @@ final class ChiffreChain
         $s = $secret;
         foreach ($chiffres as $chiffre) {
             $func = $this->chiffres[$chiffre];
-            if (true === is_callable((string)$this->$func)) {
+            if (true === is_callable($func)) {
                 $s = $this->$func($s);
             }
         }

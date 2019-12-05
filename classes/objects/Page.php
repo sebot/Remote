@@ -122,6 +122,7 @@ class Page extends RemoteObjects implements RemoteObject
                 $secret = get_field('remote_secret', $siteId);
 
                 $remoteId = $this->api($url)->sendPostToRemote($secret, $post_id, $siteId);
+                var_dump($remoteId);
             }
         }
     }

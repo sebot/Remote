@@ -75,14 +75,13 @@ class RemoteApi extends Octopus
             // get post data
             $post = get_post($postId);
             $title = $post->post_title;
-            $content = $post->post_content;
+			$content = $post->post_content;
+			$status = $post->post_status;
             $isHome = get_field('is_home', $postId);
             $postType = $post->post_type;
 
             // get featured image
 			$featuredImageUrl = get_the_post_thumbnail_url($postId);
-            $featuredFile = file_get_contents($featuredImageUrl);
-            $featuredImage = base64_encode($featuredFile);
 
             // get attachments in content
             // TODO replace all images with a unique hash matching the image string
@@ -101,8 +100,11 @@ class RemoteApi extends Octopus
                     $md5 = md5($b64);
                     $content = str_replace($attachmentUrl, $md5, $content);
 
-                    $inContentImages[$md5] = $b64;
-                }
+                    $inContentImages[] = [
+						'url'  => $attachmentUrl,
+						'hash' => $md5
+					];
+				}
 			}
 			
 			$uniqueId = get_post_meta($siteId, 'uniqueId_'.$postId, true);
@@ -119,16 +121,16 @@ class RemoteApi extends Octopus
                     'content'         => $content,
                     'isHome'          => $isHome,
                     'postType'        => $postType,
-                    'featuredImage'   => $featuredImage,
+                    'featuredImage'   => $featuredImageUrl,
 					'inContentImages' => $inContentImages,
+					'status'		  => $status,
 					'uniqueId'		  => $uniqueId
                 ]
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
             $mac2 = $octopus->sign2ndRequest($ciphertext);
             $remoteResponse = $this->_sendUpdatePostRequest($mac2, $ciphertext);
-            var_dump($remoteResponse);
-            return !$remoteResponse->error;
+            return isset($remoteResponse->rid) ? $remoteResponse->rid : 0;
         }
 
         return null === $res->error ? false : $res->error;
@@ -270,8 +272,8 @@ class RemoteApi extends Octopus
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        $resp = curl_exec($ch);
-        var_dump($resp);die;
+		$resp = curl_exec($ch);
+		var_dump($resp);die;
 		curl_close ($ch);
 
 		return json_decode($resp);
