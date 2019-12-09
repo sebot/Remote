@@ -32,6 +32,22 @@ class RemoteAssets extends RemoteObjects implements RemoteAsset
      */
     public function __construct()
     {
+        add_filter('upload_mimes', [$this, 'setAllowedMimes']);
+    }
+
+    /**
+     * Set additional allowed mimes for svg && webp
+     * 
+     * @param array $mimes - the  current mimes array
+     * 
+     * @return array - the updated mimes array
+     * @todo - add options to configure mimes allowed
+     */
+    public function setAllowedMimes($mimes)
+    {
+        $mimes['svg'] = 'image/svg+xml';
+        $mimes['webp'] = 'image/webp';
+        return $mimes;
     }
 
     /**

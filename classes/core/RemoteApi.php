@@ -13,6 +13,8 @@ namespace remote\core;
 // octopus & hexagon
 use remote\core\crypto\Octopus;
 
+require_once ABSPATH . 'wp-admin/includes/file.php';
+
 /**
  * Class RemoteApi - launch requests to remote site accessing
  * Fetcher wp-json API
@@ -96,13 +98,20 @@ class RemoteApi extends Octopus
                     $file = file_get_contents($attachmentUrl);
                     $b64 = base64_encode($file);
 
+					$mime = 'text/plain';
+					$tmpFile = download_url($attachmentUrl, 3);
+					if (! is_wp_error($tmpFile)) {
+						$mime = mime_content_type($tmpFile);
+					}
+
                     // update content with md5 of b64
                     $md5 = md5($b64);
                     $content = str_replace($attachmentUrl, $md5, $content);
 
                     $inContentImages[] = [
 						'url'  => $attachmentUrl,
-						'hash' => $md5
+						'hash' => $md5,
+						'mime' => $mime
 					];
 				}
 			}
@@ -238,19 +247,6 @@ class RemoteApi extends Octopus
     }
 
     /**
-     * Reverse string then hash it
-     * TODO: move this to Octopus
-     * 
-     * @param string $str - the string
-     * 
-     * @return string - the hash
-     */
-    private static function rhashRoute(string $str): string
-    {
-        return md5(strrev($str));
-    }
-
-    /**
      * Send a post to a remote site
      * 
      * @param string $mac - the mac used to sign the message
@@ -314,8 +310,8 @@ class RemoteApi extends Octopus
     private function _handshake(string $mac, string $msg, string $saltVector)
     {
 		$data = [
-			'm' => $mac,
-            'ms' => $msg,
+			'mac' => $mac,
+            'msg' => $msg,
             'sv' => $saltVector
 		];
 		$ch = curl_init();

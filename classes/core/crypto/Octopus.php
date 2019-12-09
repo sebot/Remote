@@ -191,6 +191,18 @@ class Octopus
     }
 
     /**
+     * Reverse string then md5 hash it
+     * 
+     * @param string $str - the string
+     * 
+     * @return string - the hash
+     */
+    public static function rhashRoute(string $str): string
+    {
+        return md5(strrev($str));
+    }
+
+    /**
      * Return nxKey to sign the next request containing the actual contents
      * 
      * @param int $chiffreVector - the chiffreVector used to generate the key
