@@ -67,11 +67,12 @@ class RemoteApi extends Octopus
      */
     public function sendPostToRemote(string $secret, int $postId, int $siteId): int
     {
+		$endpoint = 'updatepost';
         // TODO: abstract this part to separate function/class
         // move handshake to octopus
         // add new function sendMessage to Octopus
         $octopus = new Octopus($secret, true);
-        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('updatepost');
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData($endpoint);
         $res = $this->_handshake($mac, $msg, $saltVector);
         if (false === $res->error) {
             // get post data
@@ -124,7 +125,7 @@ class RemoteApi extends Octopus
 
             // request data
             $rqData = [
-                'request' => self::rhashRoute('updatepost'),
+                'request' => self::rhashRoute($endpoint),
                 'requestData' => [
                     'title'			  => $title,
                     'content'         => $content,
@@ -138,7 +139,13 @@ class RemoteApi extends Octopus
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
             $mac2 = $octopus->sign2ndRequest($ciphertext);
-            $remoteResponse = $this->_sendUpdatePostRequest($mac2, $ciphertext);
+            $remoteResponse = $this->_sendRequestToSite(
+				[
+					'mac' => $mac2,
+					'msg' => $ciphertext
+				],
+				$endpoint
+			);
             return isset($remoteResponse->rid) ? $remoteResponse->rid : 0;
         }
 
@@ -165,9 +172,11 @@ class RemoteApi extends Octopus
      */
     public function connect(string $secret, int $site_id): bool
     {
+		$endpoint = 'connect';
+
         // handshake -> TODO: abstract
         $octopus = new Octopus($secret, true);
-        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('connect');
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData($endpoint);
         $res = $this->_handshake($mac, $msg, $saltVector);
         if (false === $res->error) {
             $showHeader        = get_field('show_header', $site_id);
@@ -177,7 +186,7 @@ class RemoteApi extends Octopus
 
             // request data
             $rqData = [
-                'request' => self::rhashRoute('connect'),
+                'request' => self::rhashRoute($endpoint),
                 'requestData' => [
                     $showHeader,
                     $showNavigation,
@@ -186,8 +195,14 @@ class RemoteApi extends Octopus
                 ]
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
-            $mac2 = $octopus->sign2ndRequest($ciphertext);
-            $remoteResponse = $this->_sendConnectRequest($mac2, $ciphertext);
+			$mac2 = $octopus->sign2ndRequest($ciphertext);
+            $remoteResponse = $this->_sendRequestToSite(
+				[
+					'mac' => $mac2,
+					'msg' => $ciphertext
+				],
+				$endpoint
+			);
             return !$remoteResponse->error;
         }
 
@@ -202,9 +217,10 @@ class RemoteApi extends Octopus
      */
     public function update(string $secret, int $site_id): void
     {
+		$endpoint = 'update';
         // handshake -> TODO: abstract
         $octopus = new Octopus($secret, true);
-        [$mac, $msg, $saltVector] = $octopus->getHandshakeData('update');
+        [$mac, $msg, $saltVector] = $octopus->getHandshakeData($endpoint);
         $res = $this->_handshake($mac, $msg, $saltVector);
         if (false === $res->error) {
             $showHeader        = get_field('show_header', $site_id);
@@ -214,7 +230,7 @@ class RemoteApi extends Octopus
 
             // request data
             $rqData = [
-                'request' => self::rhashRoute('update'),
+                'request' => self::rhashRoute($endpoint),
                 'requestData' => [
                     $showHeader,
                     $showNavigation,
@@ -224,86 +240,16 @@ class RemoteApi extends Octopus
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
             $mac2 = $octopus->sign2ndRequest($ciphertext);
-            $this->_sendUpdateRequest($mac2, $ciphertext);
+            $this->_sendRequestToSite(
+				[
+					'mac' => $mac2,
+					'msg' => $ciphertext
+				],
+				$endpoint
+			);
         }
     }
 
-    private function _sendUpdateRequest(string $mac, string $ciphertext)
-    {
-        $data = [
-			'mac' => $mac,
-			'msg' => $ciphertext
-		];
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'update');
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $resp = curl_exec($ch);
-		curl_close ($ch);
-
-		return json_decode($resp);
-    }
-
-    /**
-     * Send a post to a remote site
-     * 
-     * @param string $mac - the mac used to sign the message
-     * @param string $ciphertext - the cyphertext encrypted by nx params
-     * which are by now stored on the client
-     * 
-     * @return object - the response
-     */
-	private function _sendUpdatePostRequest(string $mac, string $ciphertext): object
-	{
-		// TODO: include initial config for site to connect it
-		$data = [
-			'mac' => $mac,
-			'msg' => $ciphertext
-		];
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'updatepost');
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-		$resp = curl_exec($ch);
-		var_dump($resp);die;
-		curl_close ($ch);
-
-		return json_decode($resp);
-	}
-
-    /**
-     * Send a connect request to FetcherRemoteApi
-     * this request has been initialized with a proper handshake
-     * 
-     * @param string $mac - the mac used to sign the message
-     * @param string $ciphertext - the cyphertext encrypted by nx params
-     * which are by now stored on the client
-     * 
-     * @return object - the response
-     */
-	private function _sendConnectRequest(string $mac, string $ciphertext): object
-	{
-		// TODO: include initial config for site to connect it
-		$data = [
-			'mac' => $mac,
-			'msg' => $ciphertext
-		];
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'connect');
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $resp = curl_exec($ch);
-		curl_close ($ch);
-
-		return json_decode($resp);
-	}
-	
 	/**
      * Run the initial Handshake call
      */
@@ -314,6 +260,7 @@ class RemoteApi extends Octopus
             'msg' => $msg,
             'sv' => $saltVector
 		];
+
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.'handshake');
 		curl_setopt($ch, CURLOPT_POST, 1);
@@ -325,5 +272,27 @@ class RemoteApi extends Octopus
         curl_close ($ch);
         
         return json_decode($resp);
-    }
+	}
+	
+	/**
+	 * Send a request to a Remote site
+	 * 
+	 * @param array $data - the data to pack into the request body
+	 * @param string $endpoint - the Remote endpoint you want to access
+	 * 
+	 * @return object - the response object
+	 */
+	private function _sendRequestToSite(array $data, string $endpoint)
+	{
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->baseUrl.self::REMOTE_END.$endpoint);
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $resp = curl_exec($ch);
+		curl_close ($ch);
+
+		return json_decode($resp);
+	}
 }
