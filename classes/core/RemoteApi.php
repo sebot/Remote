@@ -84,7 +84,7 @@ class RemoteApi extends Octopus
             $postType = $post->post_type;
 
             // get featured image
-			$featuredImageUrl = get_the_post_thumbnail_url($postId);
+			$featuredImageUrl = get_the_post_thumbnail_url($postId, 'full');
 
             // get attachments in content
             // TODO replace all images with a unique hash matching the image string
@@ -183,6 +183,7 @@ class RemoteApi extends Octopus
             $showNavigation    = get_field('show_navigation', $site_id);
             $showSlider        = get_field('show_slider', $site_id);
             $showFeaturedImage = get_field('show_featured_image', $site_id);
+            $siteLogoUrl = false === isset($siteLogo['url']) ? '' : $siteLogo['url'];
 
             // request data
             $rqData = [
@@ -191,7 +192,8 @@ class RemoteApi extends Octopus
                     $showHeader,
                     $showNavigation,
                     $showSlider,
-                    $showFeaturedImage
+                    $showFeaturedImage,
+                    $siteLogoUrl
                 ]
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));
@@ -227,6 +229,8 @@ class RemoteApi extends Octopus
             $showNavigation    = get_field('show_navigation', $site_id);
             $showSlider        = get_field('show_slider', $site_id);
             $showFeaturedImage = get_field('show_featured_image', $site_id);
+            $siteLogo          = get_field('site_logo', $site_id);
+            $siteLogoUrl = false === isset($siteLogo['url']) ? '' : $siteLogo['url'];
 
             // request data
             $rqData = [
@@ -235,7 +239,8 @@ class RemoteApi extends Octopus
                     $showHeader,
                     $showNavigation,
                     $showSlider,
-                    $showFeaturedImage
+                    $showFeaturedImage,
+                    $siteLogoUrl
                 ]
             ];
             $ciphertext = $octopus->generateCiphertext(json_encode($rqData, true));

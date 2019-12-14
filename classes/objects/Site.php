@@ -66,6 +66,21 @@ class Site extends RemoteObjects implements RemoteObject
          */
 		$SiteInfo = new FieldsBuilder('site_info');
         $SiteInfo
+            ->addImage('site_logo', [
+                'label' => 'Site Logo',
+                'instructions' => '',
+                'required' => 0,
+                'conditional_logic' => [],
+                'wrapper' => [
+                    'width' => '',
+                    'class' => '',
+                    'id' => '',
+                ],
+                'return_format' => 'array',
+                'preview_size' => 'thumbnail',
+                'library' => 'all',
+                'mime_types' => 'png, jpg, gif, svg, webp',
+            ])
             ->addText('site_url', 
                 [
                     'required' => true,
